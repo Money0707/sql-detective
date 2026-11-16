@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SQL Detective</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">SQL Detective</span>
+      <span class="brand-sub">The Quality Investigation</span>
+    </div>
+    <div class="who" id="who" hidden></div>
+  </header>
+
+  <!-- Step 1: participant name -->
+  <main id="start" class="start">
+    <form id="start-form" class="card start-card">
+      <p class="eyebrow">Case file · Customer Service QA Audit</p>
+      <h1>Welcome, Detective.</h1>
+      <p class="muted">Customer service quality has slipped in some markets. Use SQL to look through the QA audit records and find out where. There are five short missions, and no SQL experience is needed.</p>
+      <label for="name">Your name</label>
+      <input id="name" name="name" type="text" maxlength="60" autocomplete="name" required placeholder="e.g. Jordan Lee">
+      <p class="muted small">Use your full name so your instructor can find your results.</p>
+      <button type="submit" class="btn primary">Start investigation</button>
+      <p id="loading" class="muted small">Loading the SQL engine…</p>
+    </form>
+  </main>
+
+  <!-- Step 2: missions -->
+  <main id="app" class="layout" hidden>
+    <aside class="side">
+      <nav class="stepper" id="stepper" aria-label="Missions"></nav>
+
+      <section class="card">
+        <p class="eyebrow" id="mission-num"></p>
+        <h2 id="mission-title"></h2>
+        <p id="mission-concept" class="concept"></p>
+        <p class="example-label">Example</p>
+        <pre id="mission-example" class="example"></pre>
+        <div class="task">
+          <span class="task-label">Your task</span>
+          <p id="mission-task"></p>
+        </div>
+        <div id="hints"></div>
+        <button id="hint-btn" class="btn link" type="button">Show a hint</button>
+      </section>
+
+      <section class="card">
+        <p class="eyebrow">Evidence table</p>
+        <div id="schema"></div>
+      </section>
+
+      <section class="card submit-card">
+        <p class="eyebrow">Finish</p>
+        <p id="progress" class="progress-text"></p>
+        <button id="submit-btn" class="btn primary block" type="button">Submit final answers</button>
+        <p id="submit-status" class="small" hidden></p>
+      </section>
+    </aside>
+
+    <section class="work">
+      <div class="card editor-card">
+        <div class="editor-head">
+          <label for="editor">SQL editor</label>
+          <span class="muted small">Ctrl + Enter to run</span>
+        </div>
+        <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+        <div class="actions">
+          <button id="run-btn" class="btn" type="button">Run query</button>
+          <button id="check-btn" class="btn primary" type="button">Check answer</button>
+          <button id="reset-btn" class="btn link" type="button">Reset query</button>
+        </div>
+      </div>
+
+      <div id="feedback" class="feedback" hidden>
+        <span id="feedback-text"></span>
+        <button id="next-btn" class="btn primary small-btn" type="button" hidden>Next mission</button>
+      </div>
+
+      <div class="card results-card">
+        <div class="results-head">
+          <span>Results</span>
+          <span id="row-count" class="muted small"></span>
+        </div>
+        <div id="results" class="results"><p class="muted small">Run a query to see results here.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="vendor/sql-wasm.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

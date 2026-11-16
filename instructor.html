@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>SQL Detective · Instructor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">SQL Detective</span>
+      <span class="brand-sub">Instructor view</span>
+    </div>
+    <button id="signout-btn" class="btn ghost" type="button" hidden>Sign out</button>
+  </header>
+
+  <main id="login" class="start">
+    <form id="login-form" class="card start-card">
+      <p class="eyebrow">Instructor access</p>
+      <h1>Sign in</h1>
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="username" required>
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <button type="submit" class="btn primary">Sign in</button>
+      <p id="login-error" class="small submit-err" hidden></p>
+    </form>
+  </main>
+
+  <main id="dash" class="dash" hidden>
+    <div class="dash-head">
+      <div>
+        <h1>Submissions</h1>
+        <p id="summary" class="muted"></p>
+      </div>
+      <button id="refresh-btn" class="btn" type="button">Refresh</button>
+    </div>
+    <p id="dash-error" class="feedback error" hidden></p>
+    <div class="card table-card">
+      <table class="subs">
+        <thead>
+          <tr><th>Participant</th><th>Score</th><th>Submitted</th><th>Submissions</th><th></th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <p id="empty" class="muted small empty" hidden>No submissions yet.</p>
+    </div>
+  </main>
+
+  <script type="module" src="instructor.js"></script>
+</body>
+</html>
