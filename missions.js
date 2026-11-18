@@ -3,8 +3,10 @@
 // Supabase Edge Function that re-grades submissions server-side.
 
 // ---------------------------------------------------------------------------
-// Fictional Customer Service QA audit dataset
+// Fictional Customer Service QA audit dataset (3000 rows)
 // ---------------------------------------------------------------------------
+// Rows are generated from a fixed seed, so the browser and the server always
+// build exactly the same data. All names and records are fictional.
 export const SCHEMA_SQL = `
 CREATE TABLE audits (
   audit_id   INTEGER PRIMARY KEY,
@@ -14,51 +16,70 @@ CREATE TABLE audits (
   agent_name TEXT    NOT NULL,
   qa_score   INTEGER NOT NULL,  -- 0 to 100
   result     TEXT    NOT NULL   -- 'Pass' (score 80+) or 'Fail'
-);
+);`;
 
-INSERT INTO audits VALUES
-  (1001, '2026-09-01', 'MY', 'Phone', 'Aisyah Rahman',   91, 'Pass'),
-  (1002, '2026-09-01', 'MY', 'Chat',  'Daniel Tan',      76, 'Fail'),
-  (1003, '2026-09-02', 'MY', 'Email', 'Nurul Hassan',    85, 'Pass'),
-  (1004, '2026-09-03', 'MY', 'Phone', 'Kumar Raj',       88, 'Pass'),
-  (1005, '2026-09-04', 'MY', 'Chat',  'Mei Ling Wong',   79, 'Fail'),
-  (1006, '2026-09-04', 'ID', 'Phone', 'Putri Wulandari', 93, 'Pass'),
-  (1007, '2026-09-05', 'ID', 'Chat',  'Budi Santoso',    71, 'Fail'),
-  (1008, '2026-09-08', 'ID', 'Email', 'Dewi Lestari',    84, 'Pass'),
-  (1009, '2026-09-08', 'ID', 'Phone', 'Agus Pratama',    66, 'Fail'),
-  (1010, '2026-09-09', 'ID', 'Chat',  'Rina Kusuma',     82, 'Pass'),
-  (1011, '2026-09-10', 'TH', 'Phone', 'Somchai Chaiyo',  87, 'Pass'),
-  (1012, '2026-09-11', 'TH', 'Email', 'Nattaya Srisuk',  90, 'Pass'),
-  (1013, '2026-09-11', 'TH', 'Chat',  'Anan Boonmee',    74, 'Fail'),
-  (1014, '2026-09-12', 'TH', 'Phone', 'Kanya Thongdee',  81, 'Pass'),
-  (1015, '2026-09-15', 'TH', 'Chat',  'Preecha Wongsa',  95, 'Pass'),
-  (1016, '2026-09-15', 'VN', 'Phone', 'Nguyen Thi Lan',  89, 'Pass'),
-  (1017, '2026-09-16', 'VN', 'Chat',  'Tran Van Minh',   68, 'Fail'),
-  (1018, '2026-09-17', 'VN', 'Email', 'Le Thu Ha',       80, 'Pass'),
-  (1019, '2026-09-18', 'VN', 'Phone', 'Pham Quoc Bao',   77, 'Fail'),
-  (1020, '2026-09-18', 'VN', 'Chat',  'Hoang Mai Anh',   72, 'Fail'),
-  (1021, '2026-09-22', 'KH', 'Phone', 'Sokha Chea',      86, 'Pass'),
-  (1022, '2026-09-22', 'KH', 'Chat',  'Dara Sok',        70, 'Fail'),
-  (1023, '2026-09-23', 'KH', 'Email', 'Srey Pich Kim',   92, 'Pass'),
-  (1024, '2026-09-24', 'KH', 'Phone', 'Vuthy Long',      83, 'Pass'),
-  (1025, '2026-09-25', 'KH', 'Chat',  'Chanthy Men',     78, 'Fail'),
-  (1026, '2026-09-25', 'PH', 'Phone', 'Maria Santos',    92, 'Pass'),
-  (1027, '2026-09-26', 'PH', 'Chat',  'Jose Reyes',      74, 'Fail'),
-  (1028, '2026-09-29', 'PH', 'Email', 'Ana Cruz',        88, 'Pass'),
-  (1029, '2026-09-29', 'PH', 'Phone', 'Paolo Garcia',    65, 'Fail'),
-  (1030, '2026-09-30', 'PH', 'Phone', 'Ramon Bautista',  96, 'Pass');
-`;
+const ROW_COUNT = 3000;
+const AGENTS_PER_MARKET = 12;
+const MARKETS = {
+  MY: { shift: 1,  first: ['Aisyah', 'Nurul', 'Hafiz', 'Amirul', 'Siti', 'Farah', 'Daniel', 'Mei Ling', 'Kumar', 'Priya', 'Jason', 'Wei Jie'], last: ['Rahman', 'Hassan', 'Ismail', 'Tan', 'Lim', 'Wong', 'Raj', 'Nair', 'Abdullah', 'Ong'] },
+  ID: { shift: -2, first: ['Putri', 'Budi', 'Dewi', 'Agus', 'Rina', 'Andi', 'Sari', 'Fajar', 'Intan', 'Rizky'], last: ['Santoso', 'Wulandari', 'Lestari', 'Pratama', 'Kusuma', 'Saputra', 'Hidayat', 'Nugroho', 'Wijaya'] },
+  TH: { shift: 2,  first: ['Somchai', 'Nattaya', 'Anan', 'Kanya', 'Preecha', 'Siriporn', 'Kittisak', 'Malee', 'Arthit', 'Ploy'], last: ['Chaiyo', 'Srisuk', 'Boonmee', 'Thongdee', 'Wongsa', 'Saelim', 'Kaewkla', 'Rattana'] },
+  VN: { shift: -4, familyFirst: true, first: ['Lan', 'Minh', 'Ha', 'Bao', 'Mai Anh', 'Tuan', 'Linh', 'Duc', 'Thu', 'Hieu'], last: ['Nguyen', 'Tran', 'Le', 'Pham', 'Hoang', 'Vu', 'Dang', 'Bui'] },
+  KH: { shift: -1, first: ['Sokha', 'Dara', 'Srey Pich', 'Vuthy', 'Chanthy', 'Rithy', 'Sopheap', 'Bopha', 'Visal', 'Kunthea'], last: ['Chea', 'Sok', 'Kim', 'Long', 'Men', 'Heng', 'Phan', 'Chhim'] },
+  PH: { shift: 0,  first: ['Maria', 'Jose', 'Ana', 'Paolo', 'Ramon', 'Liza', 'Mark', 'Joy', 'Carlo', 'Bea'], last: ['Santos', 'Reyes', 'Cruz', 'Garcia', 'Bautista', 'Mendoza', 'Villanueva', 'Aquino', 'Ramos'] },
+};
+const CHANNELS = [['Phone', 0], ['Phone', 0], ['Chat', -2], ['Chat', -2], ['Email', 1]];
+
+function seededRandom(seed) {
+  let a = seed;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function generateAudits() {
+  const rnd = seededRandom(20260901);
+  const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
+  const codes = Object.keys(MARKETS);
+  const agents = {};
+  for (const code of codes) {
+    const m = MARKETS[code];
+    const names = new Set();
+    while (names.size < AGENTS_PER_MARKET) {
+      const f = pick(m.first), l = pick(m.last);
+      names.add(m.familyFirst ? `${l} ${f}` : `${f} ${l}`);
+    }
+    agents[code] = [...names];
+  }
+  const rows = [];
+  for (let i = 0; i < ROW_COUNT; i++) {
+    const market = pick(codes);
+    const [channel, chShift] = pick(CHANNELS);
+    const day = Math.floor(rnd() * 61); // Sep 1 – Oct 31, 2026
+    const date = new Date(Date.UTC(2026, 8, 1 + day)).toISOString().slice(0, 10);
+    const gauss = (rnd() + rnd() + rnd() + rnd() - 2) * 1.73;
+    const score = Math.max(40, Math.min(100, Math.round(84 + MARKETS[market].shift + chShift + 8 * gauss)));
+    rows.push([date, market, channel, pick(agents[market]), score, score >= 80 ? 'Pass' : 'Fail']);
+  }
+  rows.sort((x, y) => (x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0));
+  return rows.map((r, i) => [100001 + i, ...r]);
+}
+
+export const AUDIT_ROWS = generateAudits();
 
 // Shown in the "Evidence table" panel.
 export const TABLES = [
   {
     name: 'audits',
     columns: [
-      ['audit_id', 'number, e.g. 1001'],
-      ['audit_date', "text, e.g. '2026-09-01'"],
+      ['audit_id', 'number, e.g. 100001'],
+      ['audit_date', "text, '2026-09-01' to '2026-10-31'"],
       ['market', "'MY', 'ID', 'TH', 'VN', 'KH', 'PH'"],
       ['channel', "'Phone', 'Chat', 'Email'"],
-      ['agent_name', "text, e.g. 'Aisyah Rahman'"],
+      ['agent_name', `text, e.g. '${AUDIT_ROWS[0][4]}'`],
       ['qa_score', 'number from 0 to 100'],
       ['result', "'Pass' (80 or higher) or 'Fail'"],
     ],
@@ -116,6 +137,7 @@ export const MISSIONS = [
     ],
     solution: "SELECT agent_name, qa_score FROM audits WHERE market = 'PH' ORDER BY qa_score DESC;",
     orderMatters: true,
+    orderKey: 'qa_score', // agents with the same score may appear in any order
   },
   {
     id: 'm4',
@@ -152,15 +174,31 @@ export const MISSIONS = [
 // ---------------------------------------------------------------------------
 // Query execution
 // ---------------------------------------------------------------------------
-const MAX_ROWS = 500;
+const MAX_ROWS = 5000;
+const templates = new WeakMap(); // SQL engine -> database file bytes
+
+// Builds the dataset once per engine and returns it as a database file.
+function templateBytes(SQL) {
+  if (!templates.has(SQL)) {
+    const db = new SQL.Database();
+    db.run(SCHEMA_SQL);
+    db.run('BEGIN');
+    const ins = db.prepare('INSERT INTO audits VALUES (?, ?, ?, ?, ?, ?, ?)');
+    for (const r of AUDIT_ROWS) ins.run(r);
+    ins.free();
+    db.run('COMMIT');
+    templates.set(SQL, db.export());
+    db.close();
+  }
+  return templates.get(SQL);
+}
 
 // Runs `sql` against a fresh copy of the dataset, so a participant can never
 // damage the data (even with DROP/DELETE). Returns { result } or { error }.
 export function runQuery(SQL, sql) {
   if (!sql || !sql.trim()) return { error: 'The editor is empty. Write a query first.' };
-  const db = new SQL.Database();
+  const db = new SQL.Database(templateBytes(SQL));
   try {
-    db.run(SCHEMA_SQL);
     let result = null;
     let count = 0;
     for (const stmt of db.iterateStatements(sql)) {
@@ -214,7 +252,7 @@ function permutations(n) {
   return out;
 }
 
-function compareWithMapping(actual, expected, mapIdx, orderMatters) {
+function compareWithMapping(actual, expected, mapIdx, orderMatters, orderKey) {
   const act = actual.rows.map((r) => JSON.stringify(mapIdx.map((i) => norm(r[i]))));
   const exp = expected.rows.map((r) => JSON.stringify(r.map(norm)));
   if (act.length !== exp.length) {
@@ -235,15 +273,21 @@ function compareWithMapping(actual, expected, mapIdx, orderMatters) {
       message: 'The number of rows is right, but some values are different. Check your columns and conditions.',
     };
   }
-  if (orderMatters && JSON.stringify(act) !== JSON.stringify(exp)) {
-    return { correct: false, message: 'The rows are right, but the order is not. Check your ORDER BY (ASC or DESC?).' };
+  if (orderMatters) {
+    // With an orderKey, only that column's sequence must match, so rows that
+    // tie on it may come in any order.
+    const k = orderKey ? expected.columns.map((c) => c.toLowerCase()).indexOf(orderKey.toLowerCase()) : -1;
+    const seq = (rows) => JSON.stringify(k >= 0 ? rows.map((r) => JSON.parse(r)[k]) : rows);
+    if (seq(act) !== seq(exp)) {
+      return { correct: false, message: 'The rows are right, but the order is not. Check your ORDER BY (ASC or DESC?).' };
+    }
   }
   return { correct: true, message: 'Correct! Your query found exactly the right evidence.' };
 }
 
 // Compares two result sets. Column names don't need to match (aliases are
 // fine) and column order doesn't matter. Returns { correct, message }.
-export function compareResults(actual, expected, orderMatters) {
+export function compareResults(actual, expected, orderMatters, orderKey) {
   const expCols = expected.columns.map((c) => c.toLowerCase());
   const actCols = actual.columns.map((c) => c.toLowerCase());
   const n = expCols.length;
@@ -266,7 +310,7 @@ export function compareResults(actual, expected, orderMatters) {
 
   let first = null;
   for (const map of candidates) {
-    const r = compareWithMapping(actual, expected, map, orderMatters);
+    const r = compareWithMapping(actual, expected, map, orderMatters, orderKey);
     if (r.correct) return r;
     if (!first) first = r;
   }
@@ -275,10 +319,17 @@ export function compareResults(actual, expected, orderMatters) {
 
 // Runs the participant's query and grades it against the mission solution.
 // Returns { correct, message, result?, error? }.
+const expectedCache = new Map();
 export function checkAnswer(SQL, mission, sql) {
   const run = runQuery(SQL, sql);
   if (run.error) return { correct: false, error: run.error, message: run.error };
-  const ref = runQuery(SQL, mission.solution);
-  if (ref.error) throw new Error(`Mission ${mission.id} solution is broken: ${ref.error}`);
-  return { ...compareResults(run.result, ref.result, mission.orderMatters), result: run.result };
+  if (!expectedCache.has(mission.id)) {
+    const ref = runQuery(SQL, mission.solution);
+    if (ref.error) throw new Error(`Mission ${mission.id} solution is broken: ${ref.error}`);
+    expectedCache.set(mission.id, ref.result);
+  }
+  return {
+    ...compareResults(run.result, expectedCache.get(mission.id), mission.orderMatters, mission.orderKey),
+    result: run.result,
+  };
 }

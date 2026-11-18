@@ -1,7 +1,8 @@
 import { MISSIONS, TABLES, runQuery, checkAnswer } from './missions.js';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
-const STORE_KEY = 'sql-detective-v2';
+const STORE_KEY = 'sql-detective-v3'; // bump when the dataset changes
+const SHOW_ROWS = 200; // rows drawn in the results table (all rows are still checked)
 const $ = (id) => document.getElementById(id);
 
 let SQL = null;
@@ -136,7 +137,8 @@ function clearResults() {
 
 function renderResults(result) {
   $('results').innerHTML = '';
-  $('row-count').textContent = `${result.rows.length} row${result.rows.length === 1 ? '' : 's'}`;
+  const n = result.rows.length;
+  $('row-count').textContent = `${n.toLocaleString()} row${n === 1 ? '' : 's'}` + (n > SHOW_ROWS ? ` · showing the first ${SHOW_ROWS}` : '');
   if (result.rows.length === 0) {
     $('results').innerHTML = '<p class="muted small">The query ran successfully but returned no rows.</p>';
     return;
@@ -149,7 +151,7 @@ function renderResults(result) {
     head.appendChild(th);
   }
   const body = table.createTBody();
-  for (const row of result.rows) {
+  for (const row of result.rows.slice(0, SHOW_ROWS)) {
     const tr = body.insertRow();
     for (const v of row) {
       const td = tr.insertCell();
