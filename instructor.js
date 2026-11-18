@@ -2,18 +2,19 @@ import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { MISSIONS } from './missions.js';
 
 const $ = (id) => document.getElementById(id);
-const TOKEN_KEY = 'sqld-instructor-token';
+const CODE_KEY = 'sqld-instructor-code';
 
-let token = null;
-try { token = sessionStorage.getItem(TOKEN_KEY); } catch { /* ignore */ }
+// The access code is kept only in this browser tab (cleared when it closes).
+let code = null;
+try { code = sessionStorage.getItem(CODE_KEY); } catch { /* ignore */ }
 
-function setToken(t) {
-  token = t;
-  try { t ? sessionStorage.setItem(TOKEN_KEY, t) : sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
+function setCode(c) {
+  code = c;
+  try { c ? sessionStorage.setItem(CODE_KEY, c) : sessionStorage.removeItem(CODE_KEY); } catch { /* ignore */ }
 }
 
 function showLogin(msg) {
-  setToken(null);
+  setCode(null);
   $('dash').hidden = true;
   $('signout-btn').hidden = true;
   $('login').hidden = false;
@@ -22,62 +23,48 @@ function showLogin(msg) {
   err.textContent = msg || '';
 }
 
+// All instructor requests go through the `results` function, which checks the code.
+async function api(body) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/results`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
+    body: JSON.stringify({ code, ...body }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { showLogin('Incorrect access code.'); throw new Error('denied'); }
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   $('login-error').hidden = true;
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
-    body: JSON.stringify({ email: $('email').value.trim(), password: $('password').value }),
-  }).catch(() => null);
-  const data = res ? await res.json().catch(() => ({})) : {};
-  if (!res || !res.ok || !data.access_token) {
-    showLogin('Sign-in failed. Check your email and password.');
-    return;
+  setCode($('code').value.trim());
+  $('code').value = '';
+  const ok = await loadSubmissions();
+  if (ok) {
+    $('login').hidden = true;
+    $('dash').hidden = false;
+    $('signout-btn').hidden = false;
   }
-  $('password').value = '';
-  setToken(data.access_token);
-  openDashboard();
 });
 
 $('signout-btn').addEventListener('click', () => showLogin());
 $('refresh-btn').addEventListener('click', loadSubmissions);
 
-async function api(path, opts = {}) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...opts,
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, ...(opts.headers || {}) },
-  });
-  if (res.status === 401) { showLogin('Your session has expired. Please sign in again.'); throw new Error('expired'); }
-  if (!res.ok) throw new Error(`Request failed (${res.status})`);
-  return res.status === 204 ? null : res.json();
-}
-
-async function openDashboard() {
-  $('login').hidden = true;
-  $('dash').hidden = false;
-  $('signout-btn').hidden = false;
-  // Confirm this account is an instructor (RLS only shows your own row).
-  try {
-    const me = await api('instructors?select=user_id');
-    if (!me.length) {
-      showLogin('This account is not registered as an instructor.');
-      return;
-    }
-  } catch { return; }
-  loadSubmissions();
-}
-
 async function loadSubmissions() {
   $('dash-error').hidden = true;
-  let rows;
   try {
-    rows = await api('submissions?select=*&order=participant_name.asc');
+    const data = await api({ action: 'list' });
+    render(data.submissions || []);
+    return true;
   } catch (e) {
-    if (e.message !== 'expired') { $('dash-error').hidden = false; $('dash-error').textContent = e.message; }
-    return;
+    if (e.message !== 'denied') {
+      if ($('dash').hidden) showLogin('Could not connect. Please try again.');
+      else { $('dash-error').hidden = false; $('dash-error').textContent = e.message; }
+    }
+    return false;
   }
-  render(rows);
 }
 
 function fmtTime(iso) {
@@ -137,10 +124,10 @@ function render(rows) {
     del.addEventListener('click', async () => {
       if (!confirm(`Delete the submission from "${r.participant_name}"? This cannot be undone.`)) return;
       try {
-        await api(`submissions?participant_id=eq.${r.participant_id}`, { method: 'DELETE' });
+        await api({ action: 'delete', participant_id: r.participant_id });
         loadSubmissions();
       } catch (e) {
-        if (e.message !== 'expired') alert('Delete failed: ' + e.message);
+        if (e.message !== 'denied') alert('Delete failed: ' + e.message);
       }
     });
   }
@@ -168,4 +155,8 @@ function renderAnswers(r) {
   return wrap;
 }
 
-if (token) openDashboard(); else showLogin();
+if (code) {
+  loadSubmissions().then((ok) => {
+    if (ok) { $('login').hidden = true; $('dash').hidden = false; $('signout-btn').hidden = false; }
+  });
+} else showLogin();

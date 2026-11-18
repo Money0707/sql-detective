@@ -13,18 +13,16 @@
       <span class="brand-mark">SQL Detective</span>
       <span class="brand-sub">Instructor view</span>
     </div>
-    <button id="signout-btn" class="btn ghost" type="button" hidden>Sign out</button>
+    <button id="signout-btn" class="btn ghost" type="button" hidden>Lock</button>
   </header>
 
   <main id="login" class="start">
     <form id="login-form" class="card start-card">
       <p class="eyebrow">Instructor access</p>
-      <h1>Sign in</h1>
-      <label for="email">Email</label>
-      <input id="email" type="email" autocomplete="username" required>
-      <label for="password">Password</label>
-      <input id="password" type="password" autocomplete="current-password" required>
-      <button type="submit" class="btn primary">Sign in</button>
+      <h1>Instructor view</h1>
+      <label for="code">Access code</label>
+      <input id="code" type="password" autocomplete="current-password" required>
+      <button type="submit" class="btn primary">Open dashboard</button>
       <p id="login-error" class="small submit-err" hidden></p>
     </form>
   </main>

@@ -5,7 +5,7 @@ fictional QA audit table, run with real SQLite (sql.js) in the browser.
 
 ## Pages
 - `index.html` — participant page (name → 5 missions → submit). No login.
-- `instructor.html` — instructor dashboard (Supabase login, instructors only).
+- `instructor.html` — instructor dashboard (one access code).
 
 ## Files
 | File | Purpose |
@@ -19,20 +19,19 @@ fictional QA audit table, run with real SQLite (sql.js) in the browser.
 
 ## Backend (Supabase project `sql-detective`)
 - `submissions`: one row per participant browser; resubmitting replaces the
-  row and increments `submission_count`. Anonymous users have no access.
-- `instructors`: user ids allowed to read/delete submissions (RLS).
+  row and increments `submission_count`. No public access (RLS on, no policies).
 - `submit` Edge Function: the only write path. Scores are computed on the
   server; any score sent by a browser is ignored.
+- `results` Edge Function: returns/deletes submissions for the dashboard,
+  only when the correct instructor access code is given.
 
 **If you edit `missions.js`**, copy it to `supabase/functions/submit/missions.js`
 and redeploy the function, so browser and server grade the same way.
 
-## Add an instructor
-1. Supabase Dashboard → Authentication → Users → Add user → Create new user
-   (tick "Auto Confirm User").
-2. SQL Editor:
-   `insert into public.instructors (user_id) select id from auth.users where email = 'you@example.com';`
-3. Recommended: Authentication → Sign In / Providers → turn off "Allow new users to sign up".
+## Instructor access code
+The dashboard asks for one access code (no account needed). It is stored as the
+Edge Function secret `INSTRUCTOR_CODE`. To set or change it: Supabase Dashboard →
+project `sql-detective` → Edge Functions → Secrets.
 
 ## Before the class
 - Delete practice submissions from the dashboard (Delete button per row).
