@@ -55,6 +55,8 @@ function enterApp() {
 
 // --- mission view ---------------------------------------------------------------
 const currentMission = () => MISSIONS[state.current];
+const GUIDED = MISSIONS.filter((m) => m.kind === 'guided').length;
+const missionLabel = (m) => (m.kind === 'challenge' ? `Challenge ${m.label}` : `Guided step ${m.label} of ${GUIDED}`);
 
 function renderStepper() {
   const nav = $('stepper');
@@ -63,8 +65,14 @@ function renderStepper() {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'step' + (i === state.current ? ' active' : '') + (missionState(m).solved ? ' solved' : '');
-    b.textContent = missionState(m).solved ? `✓ ${i + 1}` : String(i + 1);
-    b.title = `Mission ${i + 1}: ${m.title}` + (missionState(m).solved ? ' (solved)' : '');
+    if (i > 0 && m.kind !== MISSIONS[i - 1].kind) {
+      const sep = document.createElement('span');
+      sep.className = 'step-sep';
+      sep.setAttribute('aria-hidden', 'true');
+      nav.appendChild(sep);
+    }
+    b.textContent = missionState(m).solved ? `✓ ${m.label}` : m.label;
+    b.title = `${missionLabel(m)}: ${m.title}` + (missionState(m).solved ? ' (solved)' : '');
     b.setAttribute('aria-current', i === state.current ? 'step' : 'false');
     b.addEventListener('click', () => goTo(i));
     nav.appendChild(b);
@@ -82,10 +90,12 @@ function renderMission() {
   const m = currentMission();
   const ms = missionState(m);
   renderStepper();
-  $('mission-num').textContent = `Mission ${state.current + 1} of ${MISSIONS.length}` + (ms.solved ? ' · Solved' : '');
+  $('mission-num').textContent = missionLabel(m) + (ms.solved ? ' · Solved' : '');
   $('mission-title').textContent = m.title;
   $('mission-concept').textContent = m.concept;
   $('mission-example').textContent = m.example;
+  $('mission-example').hidden = !m.example;
+  $('example-label').hidden = !m.example;
   $('mission-task').textContent = m.task;
   $('editor').value = ms.query;
   renderHints();
@@ -200,9 +210,9 @@ function check() {
   save();
   const last = state.current === MISSIONS.length - 1;
   let msg = out.message;
-  if (out.correct && solvedCount() === MISSIONS.length) msg += ' All five missions are solved. You can now submit your final answers.';
+  if (out.correct && solvedCount() === MISSIONS.length) msg += ` All ${MISSIONS.length} missions are solved. You can now submit your final answers.`;
   setFeedback(out.correct ? 'success' : 'warn', msg, out.correct && !last);
-  $('mission-num').textContent = `Mission ${state.current + 1} of ${MISSIONS.length}` + (ms.solved ? ' · Solved' : '');
+  $('mission-num').textContent = missionLabel(m) + (ms.solved ? ' · Solved' : '');
   renderStepper();
   renderSubmitCard();
 }

@@ -142,7 +142,7 @@ function renderAnswers(r) {
     box.className = 'answer ' + (a.correct ? 'ok' : 'bad');
     const h = document.createElement('p');
     h.className = 'answer-head';
-    h.textContent = `${a.correct ? '✓ Correct' : '✗ Not correct'} · Mission ${i + 1}: ${m.title}`;
+    h.textContent = `${a.correct ? '✓ Correct' : '✗ Not correct'} · ${m.kind === 'challenge' ? 'Challenge' : 'Step'} ${m.label}: ${m.title}`;
     const pre = document.createElement('pre');
     pre.textContent = a.sql && a.sql.trim() ? a.sql : '(no answer)';
     box.append(h, pre);

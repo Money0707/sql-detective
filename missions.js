@@ -95,6 +95,8 @@ export const TABLES = [
 export const MISSIONS = [
   {
     id: 'm1',
+    label: '1',
+    kind: 'guided',
     title: 'First Look at the Evidence',
     concept: 'SELECT chooses which columns you want to see, and FROM names the table they come from. Use * to see every column.',
     example: 'SELECT market, channel\nFROM audits;',
@@ -110,6 +112,8 @@ export const MISSIONS = [
   },
   {
     id: 'm2',
+    label: '2',
+    kind: 'guided',
     title: 'The Failed Audits',
     concept: "WHERE keeps only the rows that match a condition. Put text values in single quotes. Text matching is exact, so 'Fail' and 'fail' are different.",
     example: "SELECT agent_name, channel\nFROM audits\nWHERE channel = 'Chat';",
@@ -125,6 +129,8 @@ export const MISSIONS = [
   },
   {
     id: 'm3',
+    label: '3',
+    kind: 'guided',
     title: 'Ranking the PH Team',
     concept: 'ORDER BY sorts the results. ASC (the default) puts the lowest value first and DESC puts the highest first. ORDER BY goes after WHERE.',
     example: "SELECT agent_name, audit_date\nFROM audits\nWHERE channel = 'Email'\nORDER BY audit_date DESC;",
@@ -141,6 +147,8 @@ export const MISSIONS = [
   },
   {
     id: 'm4',
+    label: '4',
+    kind: 'guided',
     title: 'How Many Failed?',
     concept: 'COUNT(*) counts rows. With a WHERE clause it counts only the rows that match, and the answer is a single number. AS gives the result column a name.',
     example: "SELECT COUNT(*) AS chat_audits\nFROM audits\nWHERE channel = 'Chat';",
@@ -156,6 +164,8 @@ export const MISSIONS = [
   },
   {
     id: 'm5',
+    label: '5',
+    kind: 'guided',
     title: 'Failures by Market',
     concept: 'GROUP BY puts rows that share a value into groups, and COUNT(*) then counts the rows in each group. The order is SELECT, FROM, WHERE, then GROUP BY.',
     example: 'SELECT channel, COUNT(*) AS audits\nFROM audits\nGROUP BY channel;',
@@ -168,6 +178,42 @@ export const MISSIONS = [
     ],
     solution: "SELECT market, COUNT(*) AS failed_audits FROM audits WHERE result = 'Fail' GROUP BY market;",
     orderMatters: false,
+  },
+  {
+    id: 'c1',
+    label: 'A',
+    kind: 'challenge',
+    title: 'Which Channel Fails Most?',
+    concept: 'Challenge: no example this time. Combine WHERE, GROUP BY and ORDER BY from the guided steps.',
+    example: '',
+    task: 'For each channel, show the channel and its number of failed audits, sorted from the most failures to the fewest.',
+    starter: 'SELECT *\nFROM audits;',
+    hints: [
+      "Only failed audits count, so start with WHERE result = 'Fail'.",
+      'You need one row per channel: GROUP BY channel.',
+      "Skeleton: SELECT ___, COUNT(*) FROM audits WHERE ___ GROUP BY ___ ORDER BY COUNT(*) DESC;",
+    ],
+    solution: "SELECT channel, COUNT(*) AS failed_audits FROM audits WHERE result = 'Fail' GROUP BY channel ORDER BY failed_audits DESC;",
+    orderMatters: true,
+    orderKey: 'failed_audits',
+  },
+  {
+    id: 'c2',
+    label: 'B',
+    kind: 'challenge',
+    title: 'Who on the PH Team Was Audited Most?',
+    concept: 'Challenge: no example this time. The same three keywords as Challenge A, used on a different question.',
+    example: '',
+    task: "For each agent in the 'PH' market, show the agent_name and their number of audits, sorted from the most audits to the fewest.",
+    starter: 'SELECT *\nFROM audits;',
+    hints: [
+      "Keep only the PH market with WHERE market = 'PH'.",
+      'You need one row per agent: GROUP BY agent_name.',
+      "Skeleton: SELECT ___, COUNT(*) FROM audits WHERE ___ GROUP BY ___ ORDER BY COUNT(*) DESC;",
+    ],
+    solution: "SELECT agent_name, COUNT(*) AS audits FROM audits WHERE market = 'PH' GROUP BY agent_name ORDER BY audits DESC;",
+    orderMatters: true,
+    orderKey: 'audits',
   },
 ];
 

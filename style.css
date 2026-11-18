@@ -142,6 +142,7 @@ textarea#editor {
   border: 1px solid var(--line); background: var(--surface); color: var(--muted);
 }
 .step:hover { border-color: #b9c0c8; }
+.step-sep { flex: 0 0 1px; margin: 4px 2px; background: var(--line); }
 .step.solved { background: var(--ok-bg); color: var(--ok); border-color: #bfe3c9; }
 .step.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); }
 .step.active.solved { color: var(--ok); }
