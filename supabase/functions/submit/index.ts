@@ -3,7 +3,7 @@
 // the browser uses, then stores the result. The client never sends a score.
 import initSqlJs from "npm:sql.js@1.12.0/dist/sql-asm.js";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-import { MISSIONS, checkAnswer } from "./missions.js";
+import { MISSIONS, checkAnswer, loadAuditRows } from "./missions.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -19,6 +19,21 @@ const db = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   { auth: { persistSession: false } },
 );
+
+// The same 10,000 fictional rows the website loads, read once per instance.
+let dataReady: Promise<void> | null = null;
+function ensureData() {
+  if (!dataReady) {
+    dataReady = db.rpc("audit_rows").then(({ data, error }) => {
+      if (error) throw error;
+      loadAuditRows(data);
+    }).catch((e) => {
+      dataReady = null;
+      throw e;
+    });
+  }
+  return dataReady;
+}
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -46,6 +61,12 @@ Deno.serve(async (req) => {
   if (typeof answers !== "object" || answers === null) return json(400, { error: "Missing answers." });
 
   const SQL = await sqlReady;
+  try {
+    await ensureData();
+  } catch (e) {
+    console.error(e);
+    return json(503, { error: "Could not load the audit data. Please try again." });
+  }
   const graded: Record<string, { sql: string; correct: boolean }> = {};
   let score = 0;
   for (const m of MISSIONS) {

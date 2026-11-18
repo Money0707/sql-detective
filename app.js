@@ -1,7 +1,7 @@
-import { MISSIONS, TABLES, runQuery, checkAnswer } from './missions.js';
+import { MISSIONS, TABLES, runQuery, checkAnswer, loadAuditRows } from './missions.js';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
-const STORE_KEY = 'sql-detective-v3'; // bump when the dataset changes
+const STORE_KEY = 'sql-detective-v4'; // bump when the dataset changes
 const SHOW_ROWS = 200; // rows drawn in the results table (all rows are still checked)
 const $ = (id) => document.getElementById(id);
 
@@ -22,14 +22,27 @@ function missionState(m) {
 const solvedCount = () => MISSIONS.filter((m) => missionState(m).solved).length;
 
 // --- start screen ---------------------------------------------------------------
-initSqlJs({ locateFile: (f) => `vendor/${f}` })
-  .then((s) => {
+// The audit data is read from Supabase (read-only); queries then run on a
+// copy inside this browser, so nobody can change the shared data.
+async function fetchAuditRows() {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/audit_rows`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
+    body: '{}',
+  });
+  if (!res.ok) throw new Error(`data request failed (${res.status})`);
+  return res.json();
+}
+
+Promise.all([initSqlJs({ locateFile: (f) => `vendor/${f}` }), fetchAuditRows()])
+  .then(([s, rows]) => {
+    loadAuditRows(rows);
     SQL = s;
     $('loading').hidden = true;
     if (state.participant) enterApp();
   })
   .catch((e) => {
-    $('loading').textContent = 'Could not load the SQL engine. Please refresh the page. (' + e.message + ')';
+    $('loading').textContent = 'Could not load the SQL engine or the audit data. Please refresh the page. (' + e.message + ')';
   });
 
 $('start-form').addEventListener('submit', (e) => {

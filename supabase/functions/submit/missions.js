@@ -3,10 +3,12 @@
 // Supabase Edge Function that re-grades submissions server-side.
 
 // ---------------------------------------------------------------------------
-// Fictional Customer Service QA audit dataset (3000 rows)
+// Fictional Customer Service QA audit dataset (10,000 rows)
 // ---------------------------------------------------------------------------
-// Rows are generated from a fixed seed, so the browser and the server always
-// build exactly the same data. All names and records are fictional.
+// The rows live in Supabase (table public.audits) and are read through the
+// read-only function public.audit_rows(). The browser and the grading
+// function both load them with loadAuditRows(), so everyone grades against
+// exactly the same data. All names and records are fictional.
 export const SCHEMA_SQL = `
 CREATE TABLE audits (
   audit_id   INTEGER PRIMARY KEY,
@@ -18,68 +20,28 @@ CREATE TABLE audits (
   result     TEXT    NOT NULL   -- 'Pass' (score 80+) or 'Fail'
 );`;
 
-const ROW_COUNT = 3000;
-const AGENTS_PER_MARKET = 12;
-const MARKETS = {
-  MY: { shift: 1,  first: ['Aisyah', 'Nurul', 'Hafiz', 'Amirul', 'Siti', 'Farah', 'Daniel', 'Mei Ling', 'Kumar', 'Priya', 'Jason', 'Wei Jie'], last: ['Rahman', 'Hassan', 'Ismail', 'Tan', 'Lim', 'Wong', 'Raj', 'Nair', 'Abdullah', 'Ong'] },
-  ID: { shift: -2, first: ['Putri', 'Budi', 'Dewi', 'Agus', 'Rina', 'Andi', 'Sari', 'Fajar', 'Intan', 'Rizky'], last: ['Santoso', 'Wulandari', 'Lestari', 'Pratama', 'Kusuma', 'Saputra', 'Hidayat', 'Nugroho', 'Wijaya'] },
-  TH: { shift: 2,  first: ['Somchai', 'Nattaya', 'Anan', 'Kanya', 'Preecha', 'Siriporn', 'Kittisak', 'Malee', 'Arthit', 'Ploy'], last: ['Chaiyo', 'Srisuk', 'Boonmee', 'Thongdee', 'Wongsa', 'Saelim', 'Kaewkla', 'Rattana'] },
-  VN: { shift: -4, familyFirst: true, first: ['Lan', 'Minh', 'Ha', 'Bao', 'Mai Anh', 'Tuan', 'Linh', 'Duc', 'Thu', 'Hieu'], last: ['Nguyen', 'Tran', 'Le', 'Pham', 'Hoang', 'Vu', 'Dang', 'Bui'] },
-  KH: { shift: -1, first: ['Sokha', 'Dara', 'Srey Pich', 'Vuthy', 'Chanthy', 'Rithy', 'Sopheap', 'Bopha', 'Visal', 'Kunthea'], last: ['Chea', 'Sok', 'Kim', 'Long', 'Men', 'Heng', 'Phan', 'Chhim'] },
-  PH: { shift: 0,  first: ['Maria', 'Jose', 'Ana', 'Paolo', 'Ramon', 'Liza', 'Mark', 'Joy', 'Carlo', 'Bea'], last: ['Santos', 'Reyes', 'Cruz', 'Garcia', 'Bautista', 'Mendoza', 'Villanueva', 'Aquino', 'Ramos'] },
-};
-const CHANNELS = [['Phone', 0], ['Phone', 0], ['Chat', -2], ['Chat', -2], ['Email', 1]];
+let AUDIT_ROWS = null;
+const templates = new WeakMap(); // SQL engine -> database file bytes
+const expectedCache = new Map(); // mission id -> reference result
 
-function seededRandom(seed) {
-  let a = seed;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+// rows: array of [audit_id, audit_date, market, channel, agent_name, qa_score, result]
+export function loadAuditRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) throw new Error('No audit data received.');
+  AUDIT_ROWS = rows;
+  expectedCache.clear();
 }
-
-function generateAudits() {
-  const rnd = seededRandom(20260901);
-  const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
-  const codes = Object.keys(MARKETS);
-  const agents = {};
-  for (const code of codes) {
-    const m = MARKETS[code];
-    const names = new Set();
-    while (names.size < AGENTS_PER_MARKET) {
-      const f = pick(m.first), l = pick(m.last);
-      names.add(m.familyFirst ? `${l} ${f}` : `${f} ${l}`);
-    }
-    agents[code] = [...names];
-  }
-  const rows = [];
-  for (let i = 0; i < ROW_COUNT; i++) {
-    const market = pick(codes);
-    const [channel, chShift] = pick(CHANNELS);
-    const day = Math.floor(rnd() * 61); // Sep 1 – Oct 31, 2026
-    const date = new Date(Date.UTC(2026, 8, 1 + day)).toISOString().slice(0, 10);
-    const gauss = (rnd() + rnd() + rnd() + rnd() - 2) * 1.73;
-    const score = Math.max(40, Math.min(100, Math.round(84 + MARKETS[market].shift + chShift + 8 * gauss)));
-    rows.push([date, market, channel, pick(agents[market]), score, score >= 80 ? 'Pass' : 'Fail']);
-  }
-  rows.sort((x, y) => (x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0));
-  return rows.map((r, i) => [100001 + i, ...r]);
-}
-
-export const AUDIT_ROWS = generateAudits();
+export const auditRowCount = () => (AUDIT_ROWS ? AUDIT_ROWS.length : 0);
 
 // Shown in the "Evidence table" panel.
 export const TABLES = [
   {
     name: 'audits',
     columns: [
-      ['audit_id', 'number, e.g. 100001'],
-      ['audit_date', "text, '2026-09-01' to '2026-10-31'"],
+      ['audit_id', 'number, e.g. 200001'],
+      ['audit_date', "text, '2026-01-01' to '2026-10-31'"],
       ['market', "'MY', 'ID', 'TH', 'VN', 'KH', 'PH'"],
       ['channel', "'Phone', 'Chat', 'Email'"],
-      ['agent_name', `text, e.g. '${AUDIT_ROWS[0][4]}'`],
+      ['agent_name', "text, e.g. 'Liza Villanueva'"],
       ['qa_score', 'number from 0 to 100'],
       ['result', "'Pass' (80 or higher) or 'Fail'"],
     ],
@@ -220,23 +182,24 @@ export const MISSIONS = [
 // ---------------------------------------------------------------------------
 // Query execution
 // ---------------------------------------------------------------------------
-const MAX_ROWS = 5000;
-const templates = new WeakMap(); // SQL engine -> database file bytes
+const MAX_ROWS = 20000;
 
 // Builds the dataset once per engine and returns it as a database file.
 function templateBytes(SQL) {
-  if (!templates.has(SQL)) {
-    const db = new SQL.Database();
-    db.run(SCHEMA_SQL);
-    db.run('BEGIN');
-    const ins = db.prepare('INSERT INTO audits VALUES (?, ?, ?, ?, ?, ?, ?)');
-    for (const r of AUDIT_ROWS) ins.run(r);
-    ins.free();
-    db.run('COMMIT');
-    templates.set(SQL, db.export());
-    db.close();
-  }
-  return templates.get(SQL);
+  if (!AUDIT_ROWS) throw new Error('Audit data is not loaded yet.');
+  const cached = templates.get(SQL);
+  if (cached && cached.rows === AUDIT_ROWS) return cached.bytes;
+  const db = new SQL.Database();
+  db.run(SCHEMA_SQL);
+  db.run('BEGIN');
+  const ins = db.prepare('INSERT INTO audits VALUES (?, ?, ?, ?, ?, ?, ?)');
+  for (const r of AUDIT_ROWS) ins.run(r);
+  ins.free();
+  db.run('COMMIT');
+  const bytes = db.export();
+  db.close();
+  templates.set(SQL, { rows: AUDIT_ROWS, bytes });
+  return bytes;
 }
 
 // Runs `sql` against a fresh copy of the dataset, so a participant can never
@@ -365,7 +328,6 @@ export function compareResults(actual, expected, orderMatters, orderKey) {
 
 // Runs the participant's query and grades it against the mission solution.
 // Returns { correct, message, result?, error? }.
-const expectedCache = new Map();
 export function checkAnswer(SQL, mission, sql) {
   const run = runQuery(SQL, sql);
   if (run.error) return { correct: false, error: run.error, message: run.error };
