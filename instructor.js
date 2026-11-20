@@ -1,5 +1,5 @@
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=6';
-import { MISSIONS } from './missions.js?v=6';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=7';
+import { MISSIONS } from './missions.js?v=7';
 
 const $ = (id) => document.getElementById(id);
 const CODE_KEY = 'sqld-instructor-code';

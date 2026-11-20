@@ -1,5 +1,5 @@
-import { MISSIONS, TABLES, runQuery, checkAnswer, loadAuditRows } from './missions.js?v=6';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=6';
+import { MISSIONS, TABLES, runQuery, checkAnswer, loadAuditRows } from './missions.js?v=7';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=7';
 
 const STORE_KEY = 'sql-detective-v6'; // bump when missions change (clears saved queries)
 const SHOW_ROWS = 200; // rows drawn in the results table (all rows are still checked)
@@ -106,30 +106,10 @@ function renderMission() {
   $('mission-num').textContent = missionLabel(m) + (ms.solved ? ' · Solved' : '');
   $('mission-title').textContent = m.title;
   $('mission-concept').textContent = m.concept;
-  $('mission-example').textContent = m.example;
-  $('mission-example').hidden = !m.example;
-  $('example-label').hidden = !m.example;
   $('mission-task').textContent = m.task;
   $('editor').value = ms.query;
-  renderHints();
   setFeedback(null);
   clearResults();
-}
-
-function renderHints() {
-  const m = currentMission();
-  const ms = missionState(m);
-  const box = $('hints');
-  box.innerHTML = '';
-  m.hints.slice(0, ms.hints).forEach((h, i) => {
-    const p = document.createElement('p');
-    p.className = 'hint';
-    p.textContent = `Hint ${i + 1}: ${h}`;
-    box.appendChild(p);
-  });
-  const btn = $('hint-btn');
-  btn.hidden = ms.hints >= m.hints.length;
-  btn.textContent = ms.hints === 0 ? 'Show a hint' : 'Show another hint';
 }
 
 function renderSchema() {
@@ -294,11 +274,6 @@ $('reset-btn').addEventListener('click', () => {
   persistQuery();
   setFeedback(null);
   clearResults();
-});
-$('hint-btn').addEventListener('click', () => {
-  missionState(currentMission()).hints++;
-  save();
-  renderHints();
 });
 
 const editor = $('editor');
