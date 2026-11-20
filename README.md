@@ -33,6 +33,11 @@ The dashboard asks for one access code (no account needed). It is stored as the
 Edge Function secret `INSTRUCTOR_CODE`. To set or change it: Supabase Dashboard →
 project `sql-detective` → Edge Functions → Secrets.
 
+## Publishing an update
+After changing any `.js` file, raise the `?v=` number in `index.html`, `instructor.html`,
+`app.js` and `instructor.js` (all the same number), so browsers load matching files.
+If mission starters or answers change, also raise `STORE_KEY` in `app.js`.
+
 ## Before the class
 - Delete practice submissions from the dashboard (Delete button per row).
 - Open the site once on a company laptop to confirm it can reach
