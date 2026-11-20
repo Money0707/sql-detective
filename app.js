@@ -1,7 +1,7 @@
 import { MISSIONS, TABLES, runQuery, checkAnswer, loadAuditRows } from './missions.js';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
-const STORE_KEY = 'sql-detective-v4'; // bump when the dataset changes
+const STORE_KEY = 'sql-detective-v5'; // bump when the dataset changes
 const SHOW_ROWS = 200; // rows drawn in the results table (all rows are still checked)
 const $ = (id) => document.getElementById(id);
 
