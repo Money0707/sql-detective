@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>SQL Detective · Teach mode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Nunito+Sans:wght@400;700&family=Roboto+Mono:wght@400;700&family=Special+Elite&display=swap">
+  <link rel="stylesheet" href="teach.css?v=7">
+</head>
+<body>
+  <div id="stage" class="stage">
+    <div id="loading" class="loading">Loading the SQL engine and audit data…</div>
+    <div id="view" class="view" hidden></div>
+  </div>
+  <nav class="nav" aria-label="Teach mode navigation">
+    <button id="prev" type="button" title="Back (←)">← Back</button>
+    <span id="where"></span>
+    <button id="next" type="button" title="Next (→)">Next →</button>
+  </nav>
+  <script src="vendor/sql-wasm.js"></script>
+  <script type="module" src="teach.js?v=7"></script>
+</body>
+</html>
