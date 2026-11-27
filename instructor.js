@@ -1,5 +1,5 @@
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=11';
-import { MISSIONS } from './missions.js?v=11';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=12';
+import { MISSIONS } from './missions.js?v=12';
 
 const $ = (id) => document.getElementById(id);
 const CODE_KEY = 'sqld-instructor-code';
@@ -118,7 +118,7 @@ function render(rows) {
 
   const avg = rows.length ? rows.reduce((s, r) => s + r.score, 0) / rows.length : 0;
   $('summary').textContent = rows.length
-    ? `${rows.length} participant${rows.length === 1 ? '' : 's'} · average score ${avg.toFixed(1)} / ${MISSIONS.length} · ✓ correct, ✗ wrong, – not tried · hover a mark to see the SQL`
+    ? `${rows.length} participant${rows.length === 1 ? '' : 's'} · average score ${avg.toFixed(1)} / ${MISSIONS.length} · ✓ correct, ✗ wrong, – not tried`
     : '';
 
   // Same name used by more than one participant → show a short id to tell them apart.
@@ -148,8 +148,16 @@ function render(rows) {
       const tried = !!(a.sql && a.sql.trim());
       const q = tr.insertCell();
       q.className = 'q-col ' + (!tried ? 'q-none' : a.correct ? 'q-ok' : 'q-bad');
-      q.textContent = !tried ? '–' : a.correct ? '✓' : '✗';
-      if (tried) q.title = a.sql;
+      const mark = document.createElement('span');
+      mark.className = 'mark';
+      mark.textContent = !tried ? '–' : a.correct ? '✓' : '✗';
+      q.appendChild(mark);
+      if (tried) {
+        const code = document.createElement('pre');
+        code.className = 'q-sql';
+        code.textContent = a.sql.trim();
+        q.appendChild(code);
+      }
       const t = tr.insertCell();
       t.className = 't-col';
       t.textContent = tried ? fmtClock(a.at) || '—' : '';

@@ -173,7 +173,7 @@ textarea#editor {
 .btn.link.danger { color: var(--err); font-size: 13.5px; }
 
 /* Instructor dashboard */
-.dash { max-width: 1500px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.dash { max-width: none; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .dash-head { display: flex; justify-content: space-between; align-items: flex-end; }
 .dash-head p { margin: 0; }
 .table-card { padding: 0; overflow-x: auto; }
@@ -210,3 +210,8 @@ textarea#editor {
 .subs td.q-col[title] { cursor: help; }
 .subs .name-col { white-space: nowrap; }
 .subs .joined { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.subs td.q-col { text-align: left; vertical-align: top; min-width: 190px; max-width: 260px; }
+.subs .mark { display: block; font-size: 16px; }
+.subs .q-sql { margin: 4px 0 0; font: 11.5px/1.4 var(--mono); color: var(--ink, #1d2b44); white-space: pre-wrap; word-break: break-word; font-weight: 400; }
+.subs td, .subs th { vertical-align: top; }
+.subs th.q-col { text-align: left; }
