@@ -155,8 +155,13 @@ textarea#editor {
   background: #f1f4f8; font: 13px/1.5 var(--mono); white-space: pre-wrap;
 }
 
-/* Submit card */
-.progress-text { margin: 0 0 10px; font-weight: 600; }
+/* Progress under the stepper */
+.progress { display: flex; align-items: center; gap: 12px; margin: -4px 0 0; }
+.progress-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.progress-bar span { display: block; height: 100%; width: 0; background: var(--ok); transition: width 300ms ease-out; }
+.progress-text { margin: 0; font-weight: 600; font-size: 14px; white-space: nowrap; }
+.feedback.wrong { background: var(--err-bg); color: var(--err); border-color: #f0c4c4; }
+.save-status { margin: -4px 2px 0; }
 .btn.block { width: 100%; }
 .btn:disabled { opacity: 0.6; cursor: wait; }
 .submit-ok { color: var(--ok); margin: 10px 0 0; }

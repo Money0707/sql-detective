@@ -33,6 +33,10 @@
   <main id="app" class="layout" hidden>
     <aside class="side">
       <nav class="stepper" id="stepper" aria-label="Missions"></nav>
+      <div class="progress">
+        <div class="progress-bar" aria-hidden="true"><span id="progress-fill"></span></div>
+        <p id="progress" class="progress-text"></p>
+      </div>
 
       <section class="card">
         <p class="eyebrow" id="mission-num"></p>
@@ -49,12 +53,6 @@
         <div id="schema"></div>
       </section>
 
-      <section class="card submit-card">
-        <p class="eyebrow">Finish</p>
-        <p id="progress" class="progress-text"></p>
-        <button id="submit-btn" class="btn primary block" type="button">Submit final answers</button>
-        <p id="submit-status" class="small" hidden></p>
-      </section>
     </aside>
 
     <section class="work">
@@ -66,7 +64,7 @@
         <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Type your SQL here…"></textarea>
         <div class="actions">
           <button id="run-btn" class="btn" type="button">Run query</button>
-          <button id="check-btn" class="btn primary" type="button">Check answer</button>
+          <button id="check-btn" class="btn primary" type="button">Submit answer</button>
           <button id="reset-btn" class="btn link" type="button">Clear editor</button>
         </div>
       </div>
@@ -75,6 +73,7 @@
         <span id="feedback-text"></span>
         <button id="next-btn" class="btn primary small-btn" type="button" hidden>Next mission</button>
       </div>
+      <p id="save-status" class="small save-status" hidden></p>
 
       <div class="card results-card">
         <div class="results-head">
@@ -87,6 +86,6 @@
   </main>
 
   <script src="vendor/sql-wasm.js"></script>
-  <script type="module" src="app.js?v=7"></script>
+  <script type="module" src="app.js?v=8"></script>
 </body>
 </html>

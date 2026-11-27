@@ -1,12 +1,12 @@
-import { MISSIONS, TABLES, runQuery, checkAnswer, loadAuditRows } from './missions.js?v=7';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=7';
+import { MISSIONS, TABLES, runQuery, checkAnswer, loadAuditRows } from './missions.js?v=8';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=8';
 
-const STORE_KEY = 'sql-detective-v6'; // bump when missions change (clears saved queries)
+const STORE_KEY = 'sql-detective-v7'; // bump when missions change (clears saved queries)
 const SHOW_ROWS = 200; // rows drawn in the results table (all rows are still checked)
 const $ = (id) => document.getElementById(id);
 
 let SQL = null;
-let state = load() || { participant: null, current: 0, missions: {}, lastSubmit: null };
+let state = load() || { participant: null, current: 0, missions: {} };
 
 // --- persistence (per-browser convenience; lets a refresh keep progress) ----
 function load() {
@@ -16,7 +16,7 @@ function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch { /* ignore */ }
 }
 function missionState(m) {
-  if (!state.missions[m.id]) state.missions[m.id] = { query: m.starter, solved: false, solvedQuery: null, hints: 0 };
+  if (!state.missions[m.id]) state.missions[m.id] = { query: m.starter, submitted: false, submittedQuery: '', solved: false };
   return state.missions[m.id];
 }
 const solvedCount = () => MISSIONS.filter((m) => missionState(m).solved).length;
@@ -63,7 +63,7 @@ function enterApp() {
   $('who').textContent = 'Detective ' + state.participant.name;
   renderSchema();
   renderMission();
-  renderSubmitCard();
+  renderProgress();
 }
 
 // --- mission view ---------------------------------------------------------------
@@ -104,6 +104,8 @@ function renderMission() {
   const ms = missionState(m);
   renderStepper();
   $('mission-num').textContent = missionLabel(m) + (ms.solved ? ' · Solved' : '');
+  $('check-btn').textContent = ms.submitted ? 'Submit again' : 'Submit answer';
+  $('save-status').hidden = true;
   $('mission-title').textContent = m.title;
   $('mission-concept').textContent = m.concept;
   $('mission-task').textContent = m.task;
@@ -189,85 +191,77 @@ function run() {
   renderResults(out.result);
 }
 
-function check() {
+// Submit the answer for the current mission. Only the latest submission of
+// each mission counts; the server re-grades every mission and stores the
+// result for the instructor.
+function submitAnswer() {
   persistQuery();
   const m = currentMission();
   const ms = missionState(m);
-  const out = checkAnswer(SQL, m, $('editor').value);
-  if (out.error) { clearResults(); setFeedback('error', out.error); return; }
-  renderResults(out.result);
-  if (out.correct) {
-    ms.solved = true;
-    ms.solvedQuery = $('editor').value;
-  }
+  const sql = $('editor').value;
+  if (!sql.trim()) { setFeedback('wrong', 'Wrong. The editor is empty. Type your SQL first.'); return; }
+  const out = checkAnswer(SQL, m, sql);
+  ms.submitted = true;
+  ms.submittedQuery = sql;
+  ms.solved = !!out.correct;
   save();
-  const last = state.current === MISSIONS.length - 1;
-  let msg = out.message;
-  if (out.correct && solvedCount() === MISSIONS.length) msg += ` All ${MISSIONS.length} missions are solved. You can now submit your final answers.`;
-  setFeedback(out.correct ? 'success' : 'warn', msg, out.correct && !last);
+  if (out.error) {
+    clearResults();
+    setFeedback('wrong', `Wrong. Your query has an error: ${out.error}`);
+  } else {
+    renderResults(out.result);
+    if (out.correct) {
+      let msg = `Congratulations, ${state.participant.name}! Your query found exactly the right evidence.`;
+      if (solvedCount() === MISSIONS.length) msg += ` All ${MISSIONS.length} missions are solved.`;
+      setFeedback('success', msg, state.current < MISSIONS.length - 1);
+    } else {
+      setFeedback('wrong', `Wrong. ${out.message}`);
+    }
+  }
+  $('check-btn').textContent = 'Submit again';
   $('mission-num').textContent = missionLabel(m) + (ms.solved ? ' · Solved' : '');
   renderStepper();
-  renderSubmitCard();
+  renderProgress();
+  sendToInstructor();
 }
 
-// --- submission ---------------------------------------------------------------------
-function renderSubmitCard() {
+function renderProgress() {
   const n = solvedCount();
-  $('progress').textContent = `${n} of ${MISSIONS.length} missions solved`;
-  const ls = state.lastSubmit;
-  const st = $('submit-status');
-  if (ls) {
-    st.hidden = false;
-    st.className = 'small submit-ok';
-    st.textContent = `Submitted at ${new Date(ls.submitted_at).toLocaleTimeString()}. Your score is ${ls.score} / ${ls.total}. You can submit again, and only your latest submission counts.`;
-    $('submit-btn').textContent = 'Submit again';
-  }
+  $('progress').textContent = `Progress ${n} / ${MISSIONS.length}`;
+  $('progress-fill').style.width = `${(n / MISSIONS.length) * 100}%`;
 }
 
-async function submit() {
-  persistQuery();
-  const n = solvedCount();
-  const ask = n < MISSIONS.length
-    ? `You have solved ${n} of ${MISSIONS.length} missions.\n\nYou can still submit. Your score will be the number of missions answered correctly. Unfinished missions are sent as they are now.`
-    : 'Submit your final answers to the instructor?';
-  if (!confirm(ask)) return;
-
-  // Send the query that solved each mission; otherwise the current editor text.
+// Sends the latest submitted query of every mission (empty if not submitted).
+let saving = Promise.resolve();
+function sendToInstructor() {
   const answers = {};
-  for (const m of MISSIONS) {
-    const ms = missionState(m);
-    answers[m.id] = ms.solvedQuery || ms.query || '';
-  }
-
-  const btn = $('submit-btn');
-  const st = $('submit-status');
-  btn.disabled = true;
+  for (const m of MISSIONS) answers[m.id] = missionState(m).submittedQuery || '';
+  const st = $('save-status');
   st.hidden = false;
-  st.className = 'small muted';
-  st.textContent = 'Submitting…';
-  try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
-      body: JSON.stringify({ participant_id: state.participant.id, name: state.participant.name, answers }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
-    state.lastSubmit = { score: data.score, total: data.total, submitted_at: data.submitted_at || new Date().toISOString() };
-    save();
-    renderSubmitCard();
-  } catch (e) {
-    st.className = 'small submit-err';
-    st.textContent = `Submission failed: ${e.message}. Check your connection and try again.`;
-  } finally {
-    btn.disabled = false;
-  }
+  st.className = 'small save-status muted';
+  st.textContent = 'Saving your answer…';
+  // One request at a time, so the newest answers always arrive last.
+  saving = saving.then(async () => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
+        body: JSON.stringify({ participant_id: state.participant.id, name: state.participant.name, answers }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
+      st.className = 'small save-status submit-ok';
+      st.textContent = `Answer saved for the instructor at ${new Date().toLocaleTimeString()}.`;
+    } catch (e) {
+      st.className = 'small save-status submit-err';
+      st.textContent = `Your answer could not be saved (${e.message}). Check your connection and click Submit again.`;
+    }
+  });
 }
 
 // --- wiring -------------------------------------------------------------------------
 $('run-btn').addEventListener('click', run);
-$('check-btn').addEventListener('click', check);
-$('submit-btn').addEventListener('click', submit);
+$('check-btn').addEventListener('click', submitAnswer);
 $('next-btn').addEventListener('click', () => goTo(Math.min(state.current + 1, MISSIONS.length - 1)));
 $('reset-btn').addEventListener('click', () => {
   $('editor').value = currentMission().starter;
