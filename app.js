@@ -1,5 +1,5 @@
-import { MISSIONS, TABLES, runQuery, checkAnswer, loadAuditRows } from './missions.js?v=8';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=8';
+import { MISSIONS, TABLES, checkAnswer, loadAuditRows } from './missions.js?v=9';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=9';
 
 const STORE_KEY = 'sql-detective-v7'; // bump when missions change (clears saved queries)
 const SHOW_ROWS = 200; // rows drawn in the results table (all rows are still checked)
@@ -104,7 +104,6 @@ function renderMission() {
   const ms = missionState(m);
   renderStepper();
   $('mission-num').textContent = missionLabel(m) + (ms.solved ? ' · Solved' : '');
-  $('check-btn').textContent = ms.submitted ? 'Submit again' : 'Submit answer';
   $('save-status').hidden = true;
   $('mission-title').textContent = m.title;
   $('mission-concept').textContent = m.concept;
@@ -183,15 +182,7 @@ function persistQuery() {
   save();
 }
 
-function run() {
-  persistQuery();
-  const out = runQuery(SQL, $('editor').value);
-  if (out.error) { clearResults(); setFeedback('error', out.error); return; }
-  setFeedback(null);
-  renderResults(out.result);
-}
-
-// Submit the answer for the current mission. Only the latest submission of
+// Run query = submit the answer for the current mission. Only the latest submission of
 // each mission counts; the server re-grades every mission and stores the
 // result for the instructor.
 function submitAnswer() {
@@ -218,7 +209,6 @@ function submitAnswer() {
       setFeedback('wrong', `Wrong. ${out.message}`);
     }
   }
-  $('check-btn').textContent = 'Submit again';
   $('mission-num').textContent = missionLabel(m) + (ms.solved ? ' · Solved' : '');
   renderStepper();
   renderProgress();
@@ -260,8 +250,7 @@ function sendToInstructor() {
 }
 
 // --- wiring -------------------------------------------------------------------------
-$('run-btn').addEventListener('click', run);
-$('check-btn').addEventListener('click', submitAnswer);
+$('run-btn').addEventListener('click', submitAnswer);
 $('next-btn').addEventListener('click', () => goTo(Math.min(state.current + 1, MISSIONS.length - 1)));
 $('reset-btn').addEventListener('click', () => {
   $('editor').value = currentMission().starter;
@@ -273,7 +262,7 @@ $('reset-btn').addEventListener('click', () => {
 const editor = $('editor');
 editor.addEventListener('input', persistQuery);
 editor.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(); }
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submitAnswer(); }
   if (e.key === 'Tab' && !e.shiftKey) {
     e.preventDefault();
     const { selectionStart: s, selectionEnd: en, value } = editor;

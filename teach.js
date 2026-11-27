@@ -2,8 +2,8 @@
 // Each step has two screens: a short explanation, then the mission question
 // with a blank editor that the instructor types into live and runs on the
 // real 10,000 audit rows (read-only copy inside this browser).
-import { MISSIONS, runQuery, checkAnswer, loadAuditRows } from './missions.js?v=8';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=8';
+import { MISSIONS, runQuery, checkAnswer, loadAuditRows } from './missions.js?v=9';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=9';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
