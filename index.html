@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SQL Detective</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
   <header class="topbar">
@@ -12,7 +12,10 @@
       <span class="brand-mark">SQL Detective</span>
       <span class="brand-sub">The Quality Investigation</span>
     </div>
-    <div class="who" id="who" hidden></div>
+    <div class="top-right">
+      <div class="who" id="who" hidden></div>
+      <button id="restart-btn" class="btn ghost" type="button" hidden>Start over</button>
+    </div>
   </header>
 
   <!-- Step 1: participant name -->
@@ -85,6 +88,6 @@
   </main>
 
   <script src="vendor/sql-wasm.js"></script>
-  <script type="module" src="app.js?v=9"></script>
+  <script type="module" src="app.js?v=10"></script>
 </body>
 </html>

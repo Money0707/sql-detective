@@ -1,5 +1,5 @@
-import { MISSIONS, TABLES, checkAnswer, loadAuditRows } from './missions.js?v=9';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=9';
+import { MISSIONS, TABLES, checkAnswer, loadAuditRows } from './missions.js?v=10';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=10';
 
 const STORE_KEY = 'sql-detective-v7'; // bump when missions change (clears saved queries)
 const SHOW_ROWS = 200; // rows drawn in the results table (all rows are still checked)
@@ -61,6 +61,7 @@ function enterApp() {
   $('app').hidden = false;
   $('who').hidden = false;
   $('who').textContent = 'Detective ' + state.participant.name;
+  $('restart-btn').hidden = false;
   renderSchema();
   renderMission();
   renderProgress();
@@ -212,7 +213,7 @@ function submitAnswer() {
   $('mission-num').textContent = missionLabel(m) + (ms.solved ? ' · Solved' : '');
   renderStepper();
   renderProgress();
-  sendToInstructor();
+  sendToInstructor(m.id);
 }
 
 function renderProgress() {
@@ -223,7 +224,7 @@ function renderProgress() {
 
 // Sends the latest submitted query of every mission (empty if not submitted).
 let saving = Promise.resolve();
-function sendToInstructor() {
+function sendToInstructor(missionId) {
   const answers = {};
   for (const m of MISSIONS) answers[m.id] = missionState(m).submittedQuery || '';
   const st = $('save-status');
@@ -236,7 +237,7 @@ function sendToInstructor() {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
-        body: JSON.stringify({ participant_id: state.participant.id, name: state.participant.name, answers }),
+        body: JSON.stringify({ participant_id: state.participant.id, name: state.participant.name, mission: missionId, answers }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
@@ -257,6 +258,19 @@ $('reset-btn').addEventListener('click', () => {
   persistQuery();
   setFeedback(null);
   clearResults();
+});
+
+// Start over: clear every answer (same name and dashboard row), then save
+// the empty answers so the instructor's row goes back to 0.
+$('restart-btn').addEventListener('click', () => {
+  if (!confirm('Start over?\n\nAll your answers will be cleared and your score goes back to 0.')) return;
+  state.missions = {};
+  state.current = 0;
+  save();
+  renderMission();
+  renderProgress();
+  sendToInstructor('');
+  $('save-status').textContent = 'Starting over…';
 });
 
 const editor = $('editor');

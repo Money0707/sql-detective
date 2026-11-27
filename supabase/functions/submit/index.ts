@@ -67,7 +67,13 @@ Deno.serve(async (req) => {
     console.error(e);
     return json(503, { error: "Could not load the audit data. Please try again." });
   }
-  const graded: Record<string, { sql: string; correct: boolean }> = {};
+  // Previous answers keep their submit time unless this request changes them.
+  const { data: prevRow } = await db.from("submissions").select("answers").eq("participant_id", id).maybeSingle();
+  const prev = (prevRow?.answers ?? {}) as Record<string, { sql?: string; at?: string | null }>;
+  const now = new Date().toISOString();
+  const justRan = typeof body?.mission === "string" ? body.mission : "";
+
+  const graded: Record<string, { sql: string; correct: boolean; at: string | null }> = {};
   let score = 0;
   for (const m of MISSIONS) {
     const sql = typeof answers[m.id] === "string" ? answers[m.id].slice(0, MAX_SQL) : "";
@@ -80,7 +86,9 @@ Deno.serve(async (req) => {
       }
     }
     if (correct) score++;
-    graded[m.id] = { sql, correct };
+    const old = prev[m.id] ?? {};
+    const changed = sql.trim() !== "" && (m.id === justRan || sql !== (old.sql ?? ""));
+    graded[m.id] = { sql, correct, at: changed ? now : (sql.trim() ? old.at ?? null : null) };
   }
 
   const { data, error } = await db.rpc("record_submission", {

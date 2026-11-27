@@ -1,5 +1,5 @@
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=9';
-import { MISSIONS } from './missions.js?v=9';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=10';
+import { MISSIONS } from './missions.js?v=10';
 
 const $ = (id) => document.getElementById(id);
 const CODE_KEY = 'sqld-instructor-code';
@@ -67,18 +67,40 @@ async function loadSubmissions() {
   }
 }
 
-function fmtTime(iso) {
-  return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+function fmtClock(iso) {
+  return iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+}
+const qName = (m) => (m.kind === 'challenge' ? m.label : `Q${m.label}`);
+
+function renderHead() {
+  const tr = $('head-row');
+  tr.innerHTML = '';
+  const cells = ['Participant', 'Score'];
+  for (const m of MISSIONS) cells.push(qName(m), 'Time');
+  cells.push('');
+  for (const c of cells) {
+    const th = document.createElement('th');
+    th.textContent = c;
+    tr.appendChild(th);
+  }
+  [...tr.children].forEach((th, i) => {
+    if (i >= 2 && i < 2 + MISSIONS.length * 2) {
+      const m = MISSIONS[Math.floor((i - 2) / 2)];
+      th.className = (i - 2) % 2 === 0 ? 'q-col' : 't-col';
+      th.title = `${m.kind === 'challenge' ? 'Challenge' : 'Step'} ${m.label}: ${m.title}`;
+    }
+  });
 }
 
 function render(rows) {
+  renderHead();
   const tbody = $('rows');
   tbody.innerHTML = '';
   $('empty').hidden = rows.length > 0;
 
   const avg = rows.length ? rows.reduce((s, r) => s + r.score, 0) / rows.length : 0;
   $('summary').textContent = rows.length
-    ? `${rows.length} participant${rows.length === 1 ? '' : 's'} · average score ${avg.toFixed(1)} / ${MISSIONS.length}`
+    ? `${rows.length} participant${rows.length === 1 ? '' : 's'} · average score ${avg.toFixed(1)} / ${MISSIONS.length} · ✓ correct, ✗ wrong, – not tried · hover a mark to see the SQL`
     : '';
 
   // Same name used by more than one participant → show a short id to tell them apart.
@@ -88,6 +110,7 @@ function render(rows) {
   for (const r of rows) {
     const tr = tbody.insertRow();
     const nameCell = tr.insertCell();
+    nameCell.className = 'name-col';
     nameCell.textContent = r.participant_name;
     if (nameCount[r.participant_name.toLowerCase()] > 1) {
       const tag = document.createElement('span');
@@ -96,31 +119,26 @@ function render(rows) {
       tag.title = 'Another participant used the same name. This short id tells them apart.';
       nameCell.append(' ', tag);
     }
-    const scoreCell = tr.insertCell();
-    scoreCell.innerHTML = `<strong>${r.score}</strong> / ${r.total}`;
-    tr.insertCell().textContent = fmtTime(r.submitted_at);
-    tr.insertCell().textContent = r.submission_count;
+    tr.insertCell().innerHTML = `<strong>${r.score}</strong> / ${r.total}`;
+
+    for (const m of MISSIONS) {
+      const a = (r.answers && r.answers[m.id]) || {};
+      const tried = !!(a.sql && a.sql.trim());
+      const q = tr.insertCell();
+      q.className = 'q-col ' + (!tried ? 'q-none' : a.correct ? 'q-ok' : 'q-bad');
+      q.textContent = !tried ? '–' : a.correct ? '✓' : '✗';
+      if (tried) q.title = a.sql;
+      const t = tr.insertCell();
+      t.className = 't-col';
+      t.textContent = tried ? fmtClock(a.at) || '—' : '';
+    }
+
     const act = tr.insertCell();
     act.className = 'row-actions';
-    const view = document.createElement('button');
-    view.className = 'btn small-btn';
-    view.textContent = 'View answers';
     const del = document.createElement('button');
     del.className = 'btn link danger';
     del.textContent = 'Delete';
-    act.append(view, del);
-
-    const detail = tbody.insertRow();
-    detail.hidden = true;
-    detail.className = 'detail-row';
-    const cell = detail.insertCell();
-    cell.colSpan = 5;
-    cell.appendChild(renderAnswers(r));
-
-    view.addEventListener('click', () => {
-      detail.hidden = !detail.hidden;
-      view.textContent = detail.hidden ? 'View answers' : 'Hide answers';
-    });
+    act.append(del);
     del.addEventListener('click', async () => {
       if (!confirm(`Delete the submission from "${r.participant_name}"? This cannot be undone.`)) return;
       try {
@@ -131,28 +149,6 @@ function render(rows) {
       }
     });
   }
-}
-
-function renderAnswers(r) {
-  const wrap = document.createElement('div');
-  wrap.className = 'answers';
-  MISSIONS.forEach((m, i) => {
-    const a = (r.answers && r.answers[m.id]) || { sql: '', correct: false };
-    const box = document.createElement('div');
-    box.className = 'answer ' + (a.correct ? 'ok' : 'bad');
-    const h = document.createElement('p');
-    h.className = 'answer-head';
-    h.textContent = `${a.correct ? '✓ Correct' : '✗ Not correct'} · ${m.kind === 'challenge' ? 'Challenge' : 'Step'} ${m.label}: ${m.title}`;
-    const pre = document.createElement('pre');
-    pre.textContent = a.sql && a.sql.trim() ? a.sql : '(no answer)';
-    box.append(h, pre);
-    wrap.appendChild(box);
-  });
-  const meta = document.createElement('p');
-  meta.className = 'muted small';
-  meta.textContent = `First submitted ${fmtTime(r.first_submitted_at)} · participant id ${r.participant_id}`;
-  wrap.appendChild(meta);
-  return wrap;
 }
 
 if (code) {

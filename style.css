@@ -33,6 +33,7 @@ body {
 .brand { display: flex; align-items: baseline; gap: 12px; }
 .brand-mark { font-weight: 700; letter-spacing: 0.02em; font-size: 17px; }
 .brand-sub { opacity: 0.75; font-size: 14px; }
+.top-right { display: flex; align-items: center; gap: 14px; }
 .who { font-size: 14px; opacity: 0.9; }
 
 /* Generic */
@@ -172,7 +173,7 @@ textarea#editor {
 .btn.link.danger { color: var(--err); font-size: 13.5px; }
 
 /* Instructor dashboard */
-.dash { max-width: 1100px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.dash { max-width: 1500px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .dash-head { display: flex; justify-content: space-between; align-items: flex-end; }
 .dash-head p { margin: 0; }
 .table-card { padding: 0; overflow-x: auto; }
@@ -198,3 +199,13 @@ textarea#editor {
   .topbar { padding: 12px 16px; }
   .brand-sub { display: none; }
 }
+
+/* Dashboard: one column per question plus its submit time */
+.subs .q-col { text-align: center; font-weight: 700; font-size: 16px; padding-left: 10px; padding-right: 4px; border-left: 1px solid var(--line); }
+.subs th.q-col { font-size: 13px; }
+.subs .t-col { color: var(--muted); font-size: 12.5px; white-space: nowrap; padding-left: 4px; padding-right: 10px; font-variant-numeric: tabular-nums; }
+.subs .q-ok { color: var(--ok); background: var(--ok-bg); }
+.subs .q-bad { color: var(--err); background: var(--err-bg); }
+.subs .q-none { color: var(--muted); }
+.subs td.q-col[title] { cursor: help; }
+.subs .name-col { white-space: nowrap; }
