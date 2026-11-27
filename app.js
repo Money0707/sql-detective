@@ -1,5 +1,5 @@
-import { MISSIONS, TABLES, checkAnswer, loadAuditRows } from './missions.js?v=10';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=10';
+import { MISSIONS, TABLES, checkAnswer, loadAuditRows } from './missions.js?v=11';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=11';
 
 const STORE_KEY = 'sql-detective-v7'; // bump when missions change (clears saved queries)
 const SHOW_ROWS = 200; // rows drawn in the results table (all rows are still checked)
@@ -54,6 +54,7 @@ $('start-form').addEventListener('submit', (e) => {
   state.participant = { id: crypto.randomUUID(), name };
   save();
   enterApp();
+  sendToInstructor('', true); // the instructor sees the name as soon as they join
 });
 
 function enterApp() {
@@ -224,13 +225,15 @@ function renderProgress() {
 
 // Sends the latest submitted query of every mission (empty if not submitted).
 let saving = Promise.resolve();
-function sendToInstructor(missionId) {
+function sendToInstructor(missionId, quiet = false) {
   const answers = {};
   for (const m of MISSIONS) answers[m.id] = missionState(m).submittedQuery || '';
   const st = $('save-status');
-  st.hidden = false;
-  st.className = 'small save-status muted';
-  st.textContent = 'Saving your answer…';
+  if (!quiet) {
+    st.hidden = false;
+    st.className = 'small save-status muted';
+    st.textContent = 'Saving your answer…';
+  }
   // One request at a time, so the newest answers always arrive last.
   saving = saving.then(async () => {
     try {
@@ -241,11 +244,15 @@ function sendToInstructor(missionId) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
+      if (quiet) return;
       st.className = 'small save-status submit-ok';
       st.textContent = `Answer saved for the instructor at ${new Date().toLocaleTimeString()}.`;
     } catch (e) {
+      st.hidden = false;
       st.className = 'small save-status submit-err';
-      st.textContent = `Your answer could not be saved (${e.message}). Check your connection and click Submit again.`;
+      st.textContent = quiet
+        ? `Could not reach the instructor's page (${e.message}). Check your connection; your answers will still be saved when you click Run query.`
+        : `Your answer could not be saved (${e.message}). Check your connection and click Run query again.`;
     }
   });
 }

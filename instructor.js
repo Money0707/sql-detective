@@ -1,5 +1,5 @@
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=10';
-import { MISSIONS } from './missions.js?v=10';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=11';
+import { MISSIONS } from './missions.js?v=11';
 
 const $ = (id) => document.getElementById(id);
 const CODE_KEY = 'sqld-instructor-code';
@@ -14,6 +14,7 @@ function setCode(c) {
 }
 
 function showLogin(msg) {
+  stopAuto();
   setCode(null);
   $('dash').hidden = true;
   $('signout-btn').hidden = true;
@@ -46,17 +47,32 @@ $('login-form').addEventListener('submit', async (e) => {
     $('login').hidden = true;
     $('dash').hidden = false;
     $('signout-btn').hidden = false;
+    startAuto();
   }
 });
 
 $('signout-btn').addEventListener('click', () => showLogin());
 $('refresh-btn').addEventListener('click', loadSubmissions);
 
+// The dashboard refreshes itself every few seconds while it is open.
+const AUTO_MS = 5000;
+let autoTimer = null;
+let loading = false;
+function startAuto() {
+  stopAuto();
+  autoTimer = setInterval(() => {
+    if (!document.hidden && !$('dash').hidden && !loading) loadSubmissions();
+  }, AUTO_MS);
+}
+function stopAuto() { if (autoTimer) clearInterval(autoTimer); autoTimer = null; }
+
 async function loadSubmissions() {
-  $('dash-error').hidden = true;
+  loading = true;
   try {
     const data = await api({ action: 'list' });
+    $('dash-error').hidden = true;
     render(data.submissions || []);
+    $('updated').textContent = `Updates automatically · last updated ${new Date().toLocaleTimeString()}`;
     return true;
   } catch (e) {
     if (e.message !== 'denied') {
@@ -64,6 +80,8 @@ async function loadSubmissions() {
       else { $('dash-error').hidden = false; $('dash-error').textContent = e.message; }
     }
     return false;
+  } finally {
+    loading = false;
   }
 }
 
@@ -119,6 +137,10 @@ function render(rows) {
       tag.title = 'Another participant used the same name. This short id tells them apart.';
       nameCell.append(' ', tag);
     }
+    const joined = document.createElement('span');
+    joined.className = 'joined';
+    joined.textContent = `joined ${fmtClock(r.first_submitted_at)}`;
+    nameCell.append(joined);
     tr.insertCell().innerHTML = `<strong>${r.score}</strong> / ${r.total}`;
 
     for (const m of MISSIONS) {
@@ -153,6 +175,6 @@ function render(rows) {
 
 if (code) {
   loadSubmissions().then((ok) => {
-    if (ok) { $('login').hidden = true; $('dash').hidden = false; $('signout-btn').hidden = false; }
+    if (ok) { $('login').hidden = true; $('dash').hidden = false; $('signout-btn').hidden = false; startAuto(); }
   });
 } else showLogin();
